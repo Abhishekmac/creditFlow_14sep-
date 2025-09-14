@@ -1,0 +1,208 @@
+// Prisma schema for Credit Card Management System
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            Int               @id @default(autoincrement())
+  email         String            @unique
+  password      String? // nullable for migration compatibility
+  passwordHash  String?
+  name          String
+  isAdmin       Boolean           @default(false)
+  twoFASecret   String?
+  alertSettings Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  
+  // Relations
+  cards         Card[]
+  applications  CardApplication[]
+  transactions  Transaction[]
+  payments      Payment[]
+  rewards       Reward[]
+  offers        Offer[]
+  disputes      Dispute[]
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  activities    Activity[]
+
+  @@map("User")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("RefreshToken")
+}
+
+model CardApplication {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  fullName  String
+  email     String
+  pan       String
+  income    Int
+  product   String
+  document  String?
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("CardApplication")
+}
+
+model Card {
+  id             Int           @id @default(autoincrement())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         Int
+  number         String        @unique
+  last4          String        // Last 4 digits for display
+  cardType       String        @default("STANDARD") // STANDARD, GOLD, PLATINUM
+  status         String        @default("INACTIVE") // ACTIVE, BLOCKED, INACTIVE
+  creditLimit    Float         @default(100000)
+  autopayEnabled Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  
+  // Relations
+  transactions   Transaction[]
+  statements     Statement[]
+  payments       Payment[]
+  rewards        Reward[]
+
+  @@map("Card")
+}
+
+model Transaction {
+  id          Int       @id @default(autoincrement())
+  card        Card      @relation(fields: [cardId], references: [id])
+  cardId      Int
+  amount      Float
+  merchant    String
+  category    String    @default("Others")
+  description String?
+  date        DateTime  @default(now())
+  status      String    @default("SUCCESS") // SUCCESS, PENDING, FAILED
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  disputes    Dispute[]
+
+  @@map("Transaction")
+}
+
+model Statement {
+  id        Int      @id @default(autoincrement())
+  card      Card     @relation(fields: [cardId], references: [id])
+  cardId    Int
+  month     Int
+  year      Int
+  dueDate   DateTime
+  balance   Float
+  minDue    Float    @default(0)
+  isPaid    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cardId, month, year])
+  @@map("Statement")
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  card           Card     @relation(fields: [cardId], references: [id])
+  cardId         Int
+  amount         Float
+  method         String
+  status         String   @default("PENDING") // PENDING, SUCCESS, FAILED
+  externalId     String?  // For webhook tracking
+  user           User     @relation(fields: [userId], references: [id])
+  userId         Int
+  idempotencyKey String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("Payment")
+}
+
+model Reward {
+  id        Int      @id @default(autoincrement())
+  card      Card     @relation(fields: [cardId], references: [id])
+  cardId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  points    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([cardId, userId])
+  @@map("Reward")
+}
+
+model Dispute {
+  id            Int         @id @default(autoincrement())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId Int
+  user          User        @relation(fields: [userId], references: [id])
+  userId        Int
+  reason        String
+  status        String      @default("OPEN") // OPEN, INVESTIGATING, RESOLVED, CLOSED
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("Dispute")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  type      String   // PAYMENT_SUCCESS, CARD_BLOCKED, APPLICATION_APPROVED, etc.
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("Notification")
+}
+
+model Offer {
+  id          Int      @id @default(autoincrement())
+  user        User?    @relation(fields: [userId], references: [id])
+  userId      Int?
+  title       String
+  description String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("Offer")
+}
+
+model Activity {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  type        String   // PAYMENT, CARD_BLOCKED, CARD_UNBLOCKED, APPLICATION, PROFILE_UPDATE, LOGIN, etc.
+  title       String   // "Payment Made", "Card Blocked", etc.
+  description String   // Detailed description of the activity
+  metadata    Json?    // Additional data like amount, card number, etc.
+  status      String   @default("SUCCESS") // SUCCESS, FAILED, PENDING
+  createdAt   DateTime @default(now())
+
+  @@map("Activity")
+}

@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Prevent overscroll bounce effect */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Prevent overscroll on all elements */
+* {
+  overscroll-behavior: none;
+}
+
+/* Ensure the main app container doesn't allow overscroll */
+#root {
+  overscroll-behavior: none;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Prevent overscroll on the main layout */
+.min-h-screen {
+  overscroll-behavior: none;
+}
+
+/* Ensure proper scrolling within the main content area */
+main {
+  overscroll-behavior: none;
+  overflow-y: auto;
+  height: calc(100vh - 64px); /* Subtract top nav height */
+}
+
+/* Prevent overscroll on scrollable containers */
+.overflow-y-auto, .overflow-auto {
+  overscroll-behavior: none;
+}

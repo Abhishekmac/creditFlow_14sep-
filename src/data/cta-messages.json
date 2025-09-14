@@ -1,0 +1,8 @@
+{
+  "primary_cta": "Submit Application",
+  "secondary_cta": "Save & Continue Later",
+  "success_title": "Application Submitted Successfully!",
+  "success_description": "Your application is being processed. We'll notify you within 24 hours with the decision.",
+  "error_title": "Submission Failed",
+  "error_description": "Please check your details and try again."
+}
