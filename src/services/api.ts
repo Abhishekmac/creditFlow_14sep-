@@ -21,6 +21,28 @@ const setAuthToken = (token: string) => {
   localStorage.setItem(LEGACY_TOKEN_KEY, token); // keep both to avoid breakage
 };
 
+// Utility function to get user-specific outstanding balance key
+const getUserBalanceKey = (userId?: string): string => {
+  if (!userId) {
+    // Fallback to global key if no user ID (shouldn't happen in normal flow)
+    return 'outstandingBalance';
+  }
+  return `outstandingBalance_${userId}`;
+};
+
+// Utility function to get user-specific outstanding balance
+const getUserOutstandingBalance = (userId?: string): number => {
+  const balanceKey = getUserBalanceKey(userId);
+  const saved = localStorage.getItem(balanceKey);
+  return saved ? parseFloat(saved) : 45345; // Default value
+};
+
+// Utility function to set user-specific outstanding balance
+const setUserOutstandingBalance = (userId: string, balance: number): void => {
+  const balanceKey = getUserBalanceKey(userId);
+  localStorage.setItem(balanceKey, balance.toString());
+};
+
 // Helper to decide mock mode (no backend URL = use mocks)
 const isMockMode = () => !API_BASE_URL;
 
@@ -255,15 +277,13 @@ export const authAPI = {
 
 // Accounts API
 export const accountsAPI = {
-  getAccounts: async () => {
+  getAccounts: async (userId?: string) => {
     try {
       return await apiRequest('/accounts');
     } catch (error) {
       console.error('Get accounts error:', error);
-      // Get the current balance from localStorage or use default
-      const currentBalance = localStorage.getItem('outstandingBalance') 
-        ? parseFloat(localStorage.getItem('outstandingBalance')!) 
-        : 45320;
+      // Get the current balance from user-specific localStorage or use default
+      const currentBalance = getUserOutstandingBalance(userId);
       const availableCredit = 500000 - currentBalance;
       
       return {
@@ -284,15 +304,13 @@ export const accountsAPI = {
     }
   },
 
-  getAccount: async (accountId: string) => {
+  getAccount: async (accountId: string, userId?: string) => {
     try {
       return await apiRequest(`/accounts/${accountId}`);
     } catch (error) {
       console.error('Get account error:', error);
-      // Get the current balance from localStorage or use default
-      const currentBalance = localStorage.getItem('outstandingBalance') 
-        ? parseFloat(localStorage.getItem('outstandingBalance')!) 
-        : 45320;
+      // Get the current balance from user-specific localStorage or use default
+      const currentBalance = getUserOutstandingBalance(userId);
       const availableCredit = 500000 - currentBalance;
       
       return {
@@ -639,6 +657,9 @@ export const activitiesAPI = {
   },
 };
 
+// Export utility functions individually
+export { getUserOutstandingBalance, setUserOutstandingBalance, getUserBalanceKey };
+
 // Single default export (kept for existing imports)
 export default {
   auth: authAPI,
@@ -650,4 +671,8 @@ export default {
   health: healthAPI,
   analytics: analyticsAPI,
   activities: activitiesAPI,
+  // Utility functions for user-specific balance management
+  getUserOutstandingBalance,
+  setUserOutstandingBalance,
+  getUserBalanceKey,
 };

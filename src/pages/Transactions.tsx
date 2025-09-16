@@ -5,6 +5,8 @@ import TransactionsTable from '../components/tables/TransactionsTable';
 import PayBillModal from '../components/ui/PayBillModal';
 import { MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserOutstandingBalance, setUserOutstandingBalance } from '../services/api';
 
 // Extended mock data for better pagination demonstration
 const allMockTransactions = [
@@ -161,6 +163,7 @@ const allMockTransactions = [
 export default function Transactions() {
   const location = useLocation();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(() => {
     const saved = sessionStorage.getItem('transactions-page');
     return saved ? parseInt(saved) : 1;
@@ -177,8 +180,7 @@ export default function Transactions() {
   });
   const [showPayBillModal, setShowPayBillModal] = useState(false);
   const [outstandingBalance, setOutstandingBalance] = useState(() => {
-    const saved = localStorage.getItem('outstandingBalance');
-    return saved ? parseFloat(saved) : 45320;
+    return getUserOutstandingBalance();
   });
   const minimumDue = 2266;
 
@@ -259,6 +261,14 @@ export default function Transactions() {
     setCurrentPage(1);
   }, [searchTerm, selectedCategory, dateRange]);
 
+  // Update balance when user loads
+  useEffect(() => {
+    if (user?.id) {
+      const userBalance = getUserOutstandingBalance(user.id);
+      setOutstandingBalance(userBalance);
+    }
+  }, [user?.id]);
+
   const handlePageChange = async (page: number) => {
     if (page === currentPage || isLoading || page < 1 || page > totalPages) return;
     
@@ -292,6 +302,9 @@ export default function Transactions() {
 
   const handlePaymentSuccess = (newBalance: number) => {
     setOutstandingBalance(newBalance);
+    if (user?.id) {
+      setUserOutstandingBalance(user.id, newBalance);
+    }
     showToast({
       type: 'success',
       title: 'Payment Successful',

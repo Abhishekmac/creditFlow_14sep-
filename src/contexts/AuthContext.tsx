@@ -57,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('auth_token');
       const savedIsNew = localStorage.getItem('isNewUser') === 'true';
 
       if (savedUser && token) {
@@ -68,6 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (e) {
       console.error('Error initializing auth:', e);
       localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('isNewUser');
     } finally {
@@ -84,6 +85,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Persist (authAPI already stored token/user; we normalize & re-save)
       localStorage.setItem('user', JSON.stringify(u));
       localStorage.removeItem('isNewUser');
+
+      // Reset outstanding balance to default value for this user on login
+      const userBalanceKey = `outstandingBalance_${u.id}`;
+      localStorage.setItem(userBalanceKey, '45345');
 
       setUser(u);
       setIsNewUser(false);
@@ -112,6 +117,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('user', JSON.stringify(u));
       localStorage.setItem('isNewUser', 'true');
 
+      // Set initial outstanding balance for new user
+      const userBalanceKey = `outstandingBalance_${u.id}`;
+      localStorage.setItem(userBalanceKey, '45345');
+
       setUser(u);
       setIsNewUser(true);
 
@@ -126,6 +135,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = () => {
     try {
+      localStorage.removeItem('accessToken');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
       localStorage.removeItem('isNewUser');
@@ -156,7 +166,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     user,
     isNewUser,
-    isAuthenticated: !!user && !!localStorage.getItem('auth_token'),
+    isAuthenticated: !!user && !!(localStorage.getItem('accessToken') || localStorage.getItem('auth_token')),
     isLoading,
     login,
     register,

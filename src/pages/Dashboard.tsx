@@ -9,6 +9,7 @@ import PayBillModal from '../components/ui/PayBillModal';
 import { useCards } from '../hooks/useCards';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import {
   CreditCardIcon,
   BanknotesIcon,
@@ -20,10 +21,8 @@ import {
 import clsx from 'clsx';
 
 // Mock data - will be updated with persisted balance
-const getInitialStats = () => {
-  const currentBalance = localStorage.getItem('outstandingBalance') 
-    ? parseFloat(localStorage.getItem('outstandingBalance')!) 
-    : 45320;
+const getInitialStats = (userId?: string) => {
+  const currentBalance = api.getUserOutstandingBalance(userId);
   
   return [
     {
@@ -137,10 +136,9 @@ const mockTransactions = [
 export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [outstandingBalance, setOutstandingBalance] = useState(() => {
-    const saved = localStorage.getItem('outstandingBalance');
-    return saved ? parseFloat(saved) : 45320;
+    return api.getUserOutstandingBalance();
   });
-  const [stats, setStats] = useState(getInitialStats);
+  const [stats, setStats] = useState(() => getInitialStats());
   const [cardStatus, setCardStatus] = useState<'active' | 'blocked' | 'suspended'>('active');
   const [showBlockCardModal, setShowBlockCardModal] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
@@ -157,6 +155,15 @@ export default function Dashboard() {
   const totalPages = Math.ceil(mockTransactions.length / transactionsPerPage);
   const minimumDue = 2266;
   const demoAccountId = '660e8400-e29b-41d4-a716-446655440000';
+
+  // Update balance and stats when user loads
+  React.useEffect(() => {
+    if (user?.id) {
+      const userBalance = api.getUserOutstandingBalance(user.id);
+      setOutstandingBalance(userBalance);
+      setStats(getInitialStats(user.id));
+    }
+  }, [user?.id]);
 
   // Check if coming from successful application
   React.useEffect(() => {
@@ -211,6 +218,9 @@ export default function Dashboard() {
 
   const handlePaymentSuccess = (newBalance: number) => {
     setOutstandingBalance(newBalance);
+    if (user?.id) {
+      api.setUserOutstandingBalance(user.id, newBalance);
+    }
     // Update the stats to reflect new balance
     setStats(prevStats => {
       const newStats = [...prevStats];

@@ -11,7 +11,7 @@ import { usePayments } from '../hooks/usePayments';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../hooks/useAuth';
 import { useCards } from '../hooks/useCards';
-import { accountsAPI } from '../services/api';
+import { accountsAPI, getUserOutstandingBalance, setUserOutstandingBalance } from '../services/api';
 import { razorpayService } from '../services/razorpay';
 import clsx from 'clsx';
 
@@ -29,9 +29,8 @@ export default function Payments() {
 
   // Account data (load from API)
   const [outstandingBalance, setOutstandingBalance] = useState<number>(() => {
-    // Load from localStorage or use default
-    const saved = localStorage.getItem('outstandingBalance');
-    return saved ? parseFloat(saved) : 45320;
+    // Load from user-specific localStorage or use default
+    return getUserOutstandingBalance();
   });
   const minimumDue = 2266; // keep default; you can compute this after fetching statements if backend returns it
   const [accountId, setAccountId] = useState<number | null>(null);
@@ -54,7 +53,7 @@ export default function Payments() {
     (async () => {
       try {
         setAccountsLoading(true);
-        const resp: any = await accountsAPI.getAccounts();
+        const resp: any = await accountsAPI.getAccounts(user?.id);
         console.debug('[Payments] accountsAPI.getAccounts response:', resp);
 
         // accountsAPI may return { success: true, data: [...] } or just the array; handle both
@@ -120,10 +119,8 @@ export default function Payments() {
           setAccountId(parsedId);
         }
 
-        // update outstandingBalance if available and numeric
-        if (first?.outstandingBalance !== undefined && !Number.isNaN(Number(first.outstandingBalance))) {
-          setOutstandingBalance(Number(first.outstandingBalance));
-        }
+        // Don't override user-specific balance with API data
+        // The balance should come from user-specific localStorage, not from accounts API
       } catch (err) {
         console.error('Failed to load accounts:', err);
         setAccountId(null);
@@ -133,7 +130,7 @@ export default function Payments() {
     })();
 
     return () => { mounted = false; };
-  }, []);
+  }, [user?.id]);
 
   // Check card status whenever accountId changes
   useEffect(() => {
@@ -158,6 +155,14 @@ export default function Payments() {
     };
     checkCardStatus();
   }, [getCardStatus, accountId, hasValidAccountId]);
+
+  // Update balance when user loads
+  useEffect(() => {
+    if (user?.id) {
+      const userBalance = getUserOutstandingBalance(user.id);
+      setOutstandingBalance(userBalance);
+    }
+  }, [user?.id]);
 
   // debug — put inside Payments() component
   useEffect(() => {
@@ -316,7 +321,9 @@ export default function Payments() {
           const newBalance = Math.max(0, outstandingBalance - amount);
           console.log('New balance calculated:', newBalance);
           setOutstandingBalance(newBalance);
-          localStorage.setItem('outstandingBalance', newBalance.toString());
+          if (user?.id) {
+            setUserOutstandingBalance(user.id, newBalance);
+          }
 
           console.log('Showing success toast');
           showToast({
@@ -367,7 +374,9 @@ export default function Payments() {
           // Update outstanding balance
           const newBalance = Math.max(0, outstandingBalance - amount);
           setOutstandingBalance(newBalance);
-          localStorage.setItem('outstandingBalance', newBalance.toString());
+          if (user?.id) {
+            setUserOutstandingBalance(user.id, newBalance);
+          }
 
           showToast({
             type: 'success',
@@ -489,7 +498,9 @@ export default function Payments() {
           // Update outstanding balance locally
           const newBalance = Math.max(0, outstandingBalance - paymentAmount);
           setOutstandingBalance(newBalance);
-          localStorage.setItem('outstandingBalance', newBalance.toString());
+          if (user?.id) {
+            setUserOutstandingBalance(user.id, newBalance);
+          }
 
           showToast({
             type: 'success',
