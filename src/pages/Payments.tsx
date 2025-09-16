@@ -339,8 +339,8 @@ export default function Payments() {
       }
       
       // Open Razorpay checkout for real orders
-      await razorpayService.openCheckout({
-        key: 'rzp_test_RHNsVb8W8YBFo5', // Add the key here
+      console.log('🚀 [Payments Debug] About to call razorpayService.openCheckout');
+      const response = await razorpayService.openCheckout({
         amount: amount * 100, // Convert to paise
         currency: 'INR',
         name: 'CreditFlow',
@@ -353,48 +353,53 @@ export default function Payments() {
         theme: {
           color: '#3B82F6',
         },
-        handler: async (response: any) => {
-          try {
-            console.log('Razorpay payment response:', response);
-            
-            // Verify payment
-            const verificationResult = await razorpayService.verifyPayment(response);
-            console.log('Payment verification result:', verificationResult);
-            
-            if (verificationResult.success) {
-              // Update outstanding balance
-              const newBalance = Math.max(0, outstandingBalance - amount);
-              setOutstandingBalance(newBalance);
-              localStorage.setItem('outstandingBalance', newBalance.toString());
-
-              showToast({
-                type: 'success',
-                title: 'Payment Successful',
-                message: `₹${amount.toLocaleString()} paid successfully via Razorpay. New balance: ₹${newBalance.toLocaleString()}`,
-                duration: 6000
-              });
-
-              // Reset form
-              setAmount('');
-              setPaymentMethod('');
-              setErrors({});
-            } else {
-              throw new Error('Payment verification failed');
-            }
-          } catch (verifyError) {
-            console.error('Payment verification error:', verifyError);
-            showToast({
-              type: 'error',
-              title: 'Payment Verification Failed',
-              message: 'Payment was made but verification failed. Please contact support.',
-              duration: 8000
-            });
-          } finally {
-            // Always clear the processing state
-            setIsSubmitting(false);
-          }
-        },
       });
+      
+      console.log('🎉 [Payments Debug] Razorpay payment completed successfully:', response);
+      
+      try {
+        // Verify payment
+        console.log('🔍 [Payments Debug] Starting payment verification...');
+        const verificationResult = await razorpayService.verifyPayment(response as any);
+        console.log('✅ [Payments Debug] Payment verification result:', verificationResult);
+        
+        if (verificationResult.success) {
+          // Update outstanding balance
+          const newBalance = Math.max(0, outstandingBalance - amount);
+          setOutstandingBalance(newBalance);
+          localStorage.setItem('outstandingBalance', newBalance.toString());
+
+          showToast({
+            type: 'success',
+            title: 'Payment Successful',
+            message: `₹${amount.toLocaleString()} paid successfully via Razorpay. New balance: ₹${newBalance.toLocaleString()}`,
+            duration: 6000
+          });
+
+          // Reset form
+          setAmount('');
+          setPaymentMethod('');
+          setErrors({});
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Payment Failed',
+            message: 'Payment verification failed. Please try again.',
+            duration: 6000
+          });
+        }
+      } catch (verifyError) {
+        console.error('❌ [Payments Debug] Payment verification error:', verifyError);
+        showToast({
+          type: 'error',
+          title: 'Payment Verification Failed',
+          message: 'Payment was made but verification failed. Please contact support.',
+          duration: 8000
+        });
+      } finally {
+        // Always clear the processing state
+        setIsSubmitting(false);
+      }
     } catch (error) {
       if (error instanceof Error && error.message === 'Payment cancelled') {
         showToast({

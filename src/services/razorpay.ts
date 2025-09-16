@@ -6,7 +6,6 @@ declare global {
 }
 
 export interface RazorpayOptions {
-  key: string;
   amount: number;
   currency: string;
   name: string;
@@ -19,10 +18,6 @@ export interface RazorpayOptions {
   };
   theme?: {
     color: string;
-  };
-  handler: (response: any) => void;
-  modal?: {
-    ondismiss: () => void;
   };
 }
 
@@ -125,32 +120,48 @@ class RazorpayService {
 
   openCheckout(options: RazorpayOptions) {
     return new Promise((resolve, reject) => {
+      console.log('🔍 [Razorpay Debug] Starting openCheckout method');
+      console.log('🔍 [Razorpay Debug] Options received:', options);
+      
       if (!window.Razorpay) {
+        console.error('❌ [Razorpay Debug] Razorpay SDK not loaded. Please ensure https://checkout.razorpay.com/v1/checkout.js is loaded.');
         reject(new Error('Razorpay SDK not loaded'));
         return;
       }
 
+      console.log('✅ [Razorpay Debug] Razorpay SDK is loaded');
+      console.log('🔍 [Razorpay Debug] Available Razorpay methods:', Object.keys(window.Razorpay.prototype || {}));
+
       const razorpayOptions = {
         ...options,
         key: this.keyId,
+        handler: (response: RazorpayResponse) => {
+          console.log('🎉 [Razorpay Debug] Payment success handler called:', response);
+          resolve(response);
+        },
         modal: {
           ondismiss: () => {
+            console.warn('⚠️ [Razorpay Debug] Payment modal dismissed by user');
             reject(new Error('Payment cancelled'));
           },
         },
       };
 
-      const razorpay = new window.Razorpay(razorpayOptions);
-      
-      razorpay.on('payment.success', (response: RazorpayResponse) => {
-        resolve(response);
-      });
+      console.log('🔍 [Razorpay Debug] Final Razorpay options:', razorpayOptions);
 
-      razorpay.on('payment.error', (error: any) => {
-        reject(error);
-      });
-
-      razorpay.open();
+      try {
+        console.log('🚀 [Razorpay Debug] Creating new Razorpay instance...');
+        const razorpay = new window.Razorpay(razorpayOptions);
+        console.log('✅ [Razorpay Debug] Razorpay instance created successfully');
+        
+        console.log('🚀 [Razorpay Debug] Attempting to open Razorpay checkout...');
+        razorpay.open();
+        console.log('✅ [Razorpay Debug] rzp.open() called successfully - UI should now be visible');
+        
+      } catch (error: any) {
+        console.error('❌ [Razorpay Debug] Error during Razorpay initialization or opening:', error);
+        reject(new Error(`Failed to initialize or open Razorpay checkout: ${error.message}`));
+      }
     });
   }
 }

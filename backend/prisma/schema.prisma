@@ -125,12 +125,14 @@ model Statement {
 
 model Payment {
   id             String   @id @default(cuid())
-  card           Card     @relation(fields: [cardId], references: [id])
-  cardId         Int
+  card           Card?    @relation(fields: [cardId], references: [id])
+  cardId         Int?     // Made nullable for payments without cards
   amount         Float
   method         String
   status         String   @default("PENDING") // PENDING, SUCCESS, FAILED
-  externalId     String?  // For webhook tracking
+  externalId     String?  // For webhook tracking (Razorpay payment ID)
+  razorpayOrderId String? // Razorpay order ID
+  razorpayPaymentId String? // Razorpay payment ID
   user           User     @relation(fields: [userId], references: [id])
   userId         Int
   idempotencyKey String?  @unique

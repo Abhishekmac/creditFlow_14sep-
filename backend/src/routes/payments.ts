@@ -495,52 +495,31 @@ router.post('/razorpay/verify', async (req, res, next) => {
       logger.warn(`Payment status ${payment.status} not in valid statuses, proceeding for testing`);
     }
 
-    // Find user's card for the payment
+    // Find user's card for the payment (optional for Razorpay payments)
     const userCard = await prisma.card.findFirst({
       where: { userId },
     });
 
-    if (!userCard) {
-      logger.warn(`No card found for user ${userId}, creating mock card for testing`);
-      // For testing purposes, create a mock card response
-      const mockCard = {
-        id: 1,
-        userId: userId,
-        cardNumber: '**** **** **** 1234',
-        expiryDate: '12/25',
-        cardType: 'VISA'
-      };
-      
-      // Continue with mock card for testing
-      const mockPayment = {
-        id: Date.now(),
-        amount: Number(payment.amount) / 100, // Convert from paise to rupees
-        method: 'razorpay',
-        status: 'SUCCESS',
-        transactionId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-      };
-
-      logger.info(`Payment processed successfully for user ${userId}:`, mockPayment);
-
-      return res.json({
-        success: true,
-        payment: mockPayment,
-        message: 'Payment verified and processed successfully',
+    // Create payment record in database (always create, even without card)
+    let paymentRecord;
+    try {
+      paymentRecord = await prisma.payment.create({
+        data: {
+          cardId: userCard?.id || null, // Use card ID if available, otherwise null
+          userId: userId,
+          amount: Number(payment.amount) / 100, // Convert from paise to rupees
+          method: 'razorpay',
+          status: 'SUCCESS',
+          externalId: razorpay_payment_id,
+          razorpayOrderId: razorpay_order_id,
+          razorpayPaymentId: razorpay_payment_id,
+        },
       });
+      logger.info(`Payment record created in database: ${paymentRecord.id} for user ${userId}`);
+    } catch (dbError) {
+      logger.error(`Failed to create payment record in database:`, dbError);
+      throw new Error(`Database error: Failed to save payment record`);
     }
-
-    // Create payment record in database
-    const paymentRecord = await prisma.payment.create({
-      data: {
-        cardId: userCard.id,
-        userId: userId,
-        amount: Number(payment.amount) / 100, // Convert from paise to rupees
-        method: 'razorpay',
-        status: 'SUCCESS',
-        externalId: razorpay_payment_id,
-      },
-    });
 
     // Log activity
     await logActivity(userId, createActivityData.payment(
@@ -553,7 +532,7 @@ router.post('/razorpay/verify', async (req, res, next) => {
     await createPaymentSuccessNotification(
       userId,
       payment.amount / 100,
-      userCard.last4
+      userCard?.last4 || 'N/A'
     );
 
     logger.info(`Razorpay payment verified: ${razorpay_payment_id} for user ${userId}`);
