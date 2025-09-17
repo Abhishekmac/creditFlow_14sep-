@@ -117,8 +117,8 @@ async function main() {
       date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     },
     {
-      merchant: 'Salary Credit',
-      category: 'Others',
+      merchant: 'Apple store',
+      category: 'Refund',
       amount: 75000,
       date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
     },

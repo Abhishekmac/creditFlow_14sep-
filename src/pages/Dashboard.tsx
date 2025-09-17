@@ -78,8 +78,8 @@ const mockTransactions = [
   {
     id: '4',
     date: '2024-01-12',
-    description: 'Salary Credit',
-    category: 'Others',
+    description: 'Apple store',
+    category: 'Refund',
     amount: 75000,
     status: 'completed' as const,
   },
