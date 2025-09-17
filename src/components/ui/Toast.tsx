@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircleIcon, XCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -43,12 +43,12 @@ export default function Toast({ id, type, title, message, duration = 5000, onClo
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 300, scale: 0.9 }}
+      initial={{ opacity: 0, x: 100, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 300, scale: 0.9 }}
+      exit={{ opacity: 0, x: 100, scale: 0.95 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={clsx(
-        'max-w-sm w-full shadow-lg rounded-lg border pointer-events-auto overflow-hidden',
+        'w-full shadow-lg rounded-lg border pointer-events-auto overflow-hidden',
         toastStyles[type]
       )}
     >
@@ -90,7 +90,7 @@ interface ToastContainerProps {
 
 export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 space-y-2 max-w-md w-full px-4">
       <AnimatePresence>
         {toasts.map((toast) => (
           <Toast key={toast.id} {...toast} onClose={onClose} />

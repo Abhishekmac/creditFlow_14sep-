@@ -1,34 +1,39 @@
-import React, { useState, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { UserIcon, EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
-
-// Simple toast implementation for demo purposes
-const useToast = () => {
-  const showToast = ({ type, title, message }: { type: string; title: string; message: string }) => {
-    console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
-  };
-  return { showToast };
-};
+import { useToast } from '../hooks/useToast';
+import { ToastContainer } from '../components/ui/Toast';
 
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
-  const { showToast } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !confirmPassword) {
       showToast({
         type: 'error',
         title: 'Missing Information',
         message: 'Please fill in all fields'
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      showToast({
+        type: 'error',
+        title: 'Password Mismatch',
+        message: 'Passwords do not match. Please try again.'
       });
       return;
     }
@@ -149,6 +154,36 @@ export default function Register() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-neutral-900 dark:text-white"
+                  placeholder="Confirm your password"
+                  required
+                  minLength={6}
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeSlashIcon className="w-5 h-5" />
+                  ) : (
+                    <EyeIcon className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
               <button
                 type="submit"
                 disabled={isLoading}
@@ -183,6 +218,7 @@ export default function Register() {
           </div>
         </div>
       </motion.div>
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }
