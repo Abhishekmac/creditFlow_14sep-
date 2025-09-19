@@ -1,0 +1,57 @@
+version: "3.9"
+ 
+services:
+  frontend:
+    build: .
+    image: abijaya19/frontend:latest
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://backend:4000
+ 
+  backend:
+    build: ./backend
+    image: abijaya19/backend:latest
+    container_name: backend
+    env_file:
+      - ./backend/.env.docker
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - /app/prisma/.prisma
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run dev"
+ 
+  db:
+    image: postgres:15
+    container_name: db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: creditflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+ 
+  prisma-studio:
+    build: ./backend
+    image: abijaya19/prisma-studio:latest
+    container_name: prisma-studio
+    command: npx prisma studio --port 5555
+    env_file:
+      - ./backend/.env.docker
+    ports:
+      - "5555:5555"
+    depends_on:
+      - db
+ 
+volumes:
+  postgres_data:
